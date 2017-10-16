@@ -1,0 +1,362 @@
+---
+title: "ISLR"
+author: "BM"
+date: "27 September 2017"
+output:
+  pdf_document:
+    fig_caption: yes
+geometry: "left = 2cm, right = 2cm, top = 2cm, bottom = 1.5cm"
+classoption: a4paper
+toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 12, fig.path = 'Figs/', echo = TRUE, warning = FALSE, message = FALSE)
+``` 
+
+# ISLR, Lab: Logistic Regression, LDA, QDA, and KNN
+## 4.6.1 The Stock Market Data
+
+```{r}
+
+library(ISLR)
+data("Smarket")
+names(Smarket)
+dim(Smarket)
+summary(Smarket)
+par(pty = "s")
+pairs(Smarket)
+cor(Smarket[-9])
+attach(Smarket)
+plot(Volume)
+
+```
+
+## 4.6.2 Logistic Regression
+
+```{r}
+
+glm.fit <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, family = binomial,
+               data = Smarket)
+summary(glm.fit)
+coef(glm.fit)
+summary(glm.fit)$coef[, 1]
+glm.probs <- predict(glm.fit, type = "response")
+glm.probs[1:10]
+contrasts(Direction)
+
+glm.pred <- rep("Down", 1250)
+glm.pred[glm.probs > 0.5] <- "Up"
+table(glm.pred, Direction)
+mean(glm.pred == Direction)
+
+train <- Year < 2005
+Smarket.2005 <- Smarket[!train, ]
+dim(Smarket.2005)
+Direction.2005 <- Direction[!train]
+
+glm.fit <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Smarket,
+               family = "binomial", subset = train)
+glm.probs <- predict(glm.fit, newdata = Smarket.2005, type = "response")
+glm.pred <- rep("Down", 252)
+glm.pred[glm.probs > 0.5] <- "Up"
+table(Direction.2005, glm.pred)
+mean(glm.pred == Direction.2005)
+mean(glm.pred != Direction.2005)
+
+glm.fit <- glm(Direction ~ Lag1 + Lag2, data = Smarket, family = "binomial", subset = train)
+glm.probs <- predict(glm.fit, newdata = Smarket.2005, type = "response")
+glm.pred <- rep("Down", 252)
+glm.pred[glm.probs > 0.5] <- "Up"
+table(Direction.2005, glm.pred)
+mean(Direction.2005 == glm.pred)
+
+predict(glm.fit, newdata = data.frame(Lag1 = c(1.2, 1.5), Lag2 = c(1.1, -0.8)),
+        type = "response" )
+
+```
+
+## 4.6.3 Linear Discriminant Analysis
+
+```{r}
+
+library(MASS)
+lda.fit <- lda(Direction ~ Lag1 + Lag2, data = Smarket, subset = train)
+lda.fit
+plot(lda.fit)
+lda.pred <- predict(lda.fit, Smarket.2005)
+names(lda.pred)
+summary(lda.pred)
+lda.class <- lda.pred$class
+table(lda.class, Direction.2005)
+mean(lda.class == Direction.2005)
+head(lda.pred$class, 10)
+head(lda.pred$posterior, 10)
+sum(lda.pred$posterior[, 1] >= 0.5)
+sum(lda.pred$posterior[, 2] >= 0.5)
+
+sum(lda.pred$posterior[, 1] >= 0.9)
+lda.pred$posterior[which.max(lda.pred$posterior[, 1]), 1]
+
+```
+
+## 4.6.4 Quadratic Discriminant Analysis
+
+```{r}
+
+qda.fit <- qda(Direction ~ Lag1 + Lag2, data = Smarket, subset = train)
+qda.fit
+qda.class <- predict(qda.fit, newdata = Smarket.2005)$class
+table(Direction.2005, qda.class)
+mean(Direction.2005 == qda.class)
+
+```
+
+## 4.6.5 K-Nearest Neighbors
+
+```{r}
+
+library(class)
+train.X <- Smarket[train, 2:3]
+test.X <- Smarket[!train, 2:3]
+train.Direction <- Smarket[train, 9]
+set.seed(1)
+knn.pred <- knn(train.X, test.X, train.Direction, k = 1)
+table(knn.pred, Direction.2005)
+mean(knn.pred == Direction.2005)
+
+knn.pred <- knn(train.X, test.X, train.Direction, k = 3)
+table(knn.pred, Direction.2005)
+mean(knn.pred == Direction.2005)
+
+```
+
+## 4.6.6 An Application to Caravan Insurance Data
+
+```{r}
+
+data("Caravan")
+dim(Caravan)
+attach(Caravan)
+# names(Caravan)
+summary(Purchase)
+348 / (5474 + 348)
+
+standardized.X <- scale(Caravan[, -86])
+var(Caravan[, 1])
+var(Caravan[, 2])
+var(standardized.X[, 1])
+var(standardized.X[, 2])
+# Caravan[1:10, 1:10]
+test <- 1:1000
+train.X <- standardized.X[-test, ]
+test.X <- standardized.X[test, ]
+train.Y <- Purchase[-test]
+test.Y <- Purchase[test]
+
+set.seed(1)
+knn.pred <- knn(train.X, test.X, train.Y, k = 1)
+mean(knn.pred != test.Y)
+mean(test.Y != "No")
+table(knn.pred, test.Y)
+9/(68 + 9)
+
+set.seed(1)
+knn.pred <- knn(train.X, test.X, train.Y, k = 3)
+mean(knn.pred != test.Y)
+mean(test.Y != "No")
+table(knn.pred, test.Y)
+5/(20 + 5)
+
+set.seed(1)
+knn.pred <- knn(train.X, test.X, train.Y, k = 5)
+mean(knn.pred != test.Y)
+mean(test.Y != "No")
+table(knn.pred, test.Y)
+4/(11 + 4)
+
+glm.fit <- glm(Purchase ~., data = Caravan, subset = -test, family = "binomial")
+glm.probs <- predict(glm.fit, newdata = Caravan[test, ], type = "response")
+glm.pred <- rep("No", 1000)
+glm.pred[glm.probs > 0.5] <- "Yes"
+table(glm.pred, test.Y)
+
+glm.pred <- rep("No", 1000)
+glm.pred[glm.probs > 0.25] <- "Yes"
+table(glm.pred, test.Y)
+11 / (22 + 11)
+
+```
+
+# 5.3 Lab: Cross-Validation and the Bootstrap
+## 5.3.1 The Validation Set Approach
+
+```{r}
+
+library(ISLR)
+set.seed(1)
+train <- sample(392, 196)
+dim(Auto)
+lm.fit <- lm(mpg ~ horsepower, data = Auto, subset = train)
+attach(Auto)
+mean((mpg - predict(lm.fit, Auto))[-train] ^ 2)
+lm.fit2 = lm(mpg ~ poly(horsepower, 2), data = Auto, subset = train)
+mean((mpg - predict(lm.fit2, Auto))[-train] ^ 2)
+lm.fit3 = lm(mpg ~ poly(horsepower, 3), data = Auto, subset = train)
+mean((mpg - predict(lm.fit3, Auto))[-train] ^ 2)
+
+set.seed(2)
+train <- sample(392, 196)
+lm.fit <- lm(mpg ~ horsepower, data = Auto, subset = train)
+mean((mpg - predict(lm.fit, Auto))[-train] ^ 2)
+lm.fit2 = lm(mpg ~ poly(horsepower, 2), data = Auto, subset = train)
+mean((mpg - predict(lm.fit2, Auto))[-train] ^ 2)
+lm.fit3 = lm(mpg ~ poly(horsepower, 3), data = Auto, subset = train)
+mean((mpg - predict(lm.fit3, Auto))[-train] ^ 2)
+
+```
+
+## 5.3.2 Leave-One-Out Cross-Validation
+
+```{r}
+glm.fit <- glm(mpg ~ horsepower, data = Auto)
+coef(glm.fit)
+lm.fit <- lm(mpg ~ horsepower, data = Auto)
+coef(lm.fit)
+library(boot)
+cv.err <- cv.glm(Auto, glm.fit)
+names(cv.err)
+cv.err$delta
+cv.error <- rep(0, 5)
+for (i in 1:5) {
+  glm.fit <- glm(mpg ~ poly(horsepower, i), data = Auto)
+  cv.error[i] <- cv.glm(Auto, glm.fit)$delta
+}
+cv.error
+```
+
+## 5.3.3 k-Fold Cross-Validation
+
+```{r}
+set.seed(17)
+cv.error.10 <- rep(0, 10)
+for (i in 1:10) { 
+  glm.fit <- glm(mpg ~ poly(horsepower, i), data = Auto)
+  cv.error.10[i] <- cv.glm(Auto, glm.fit, K = 10)$delta[1]
+}
+cv.error.10
+```
+
+## 5.3.4 The Bootstrap
+
+```{r}
+# Estimating the Accuracy of a Statistic of Interest
+alpha.fn <- function(data, index){
+  X <- data$X[index]
+  Y <- data$Y[index]
+  return((var(Y) - cov(X, Y)) / (var(X) + var(Y) - 2 * cov(X, Y)))
+}
+alpha.fn(Portfolio, 1:100)
+set.seed(1)
+alpha.fn(Portfolio, sample(100, 100, replace = TRUE))
+boot(Portfolio, alpha.fn, R = 1000)
+
+# Estimating the Accuracy of a Linear Regression Model
+boot.fn <- function(data, index){
+  return(coef(lm(mpg ~ horsepower, data = data, subset = index)))
+}
+boot.fn(Auto, 1:392)
+set.seed(1)
+boot.fn(Auto, sample(392, 392, replace = TRUE))
+boot.fn(Auto, sample(392, 392, replace = TRUE))
+boot(Auto, boot.fn, 1000)
+summary(lm(mpg ~ horsepower, data = Auto))$coef
+boot.fn <- function(data, index){
+  coefficients(lm(mpg ~ horsepower + I(horsepower ^ 2), data = Auto, subset = index))
+}
+set.seed(1)
+boot(Auto, boot.fn, 1000)
+summary(lm(mpg ~ horsepower + I(horsepower ^ 2), data = Auto))$coef
+```
+
+# 6.5 Lab 1: Subset Selection Methods
+## 6.5.1 Best Subset Selection
+
+```{r}
+fix(Hitters)
+names(Hitters)
+dim(Hitters)
+sum(is.na(Hitters))
+Hitters <- na.omit(Hitters)
+dim(Hitters)
+sum(is.na(Hitters))
+library(leaps)
+regfit.full <- regsubsets(Salary ~., data = Hitters)
+summary(regfit.full)
+regfit.full <- regsubsets(Salary ~., data = Hitters, nvmax = 19)
+reg.summary <- summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+par(mfrow = c(2, 2))
+plot(reg.summary$rss, xlab = "Number of Variables", ylab = "RSS", type = "l")
+plot(reg.summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted Rsq", type = "l")
+k <- which.max(reg.summary$adjr2)
+points(k, reg.summary$adjr2[k], pch = 20, col = "red", cex = 2)
+plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
+l <- which.min(reg.summary$cp)
+points(l, reg.summary$cp[l], pch = 20, col = "red", cex = 2)
+plot(reg.summary$bic, xlab = "Number of Variables", ylab = "BICp", type = "l")
+m <- which.min(reg.summary$bic)
+points(m, reg.summary$bic[m], pch = 20, col = "red", cex = 2)
+plot(regfit.full, scale = "r2")
+plot(regfit.full, scale = "adjr2")
+plot(regfit.full, scale = "Cp")
+plot(regfit.full, scale = "bic")
+coef(regfit.full, 6)
+```
+
+## 6.5.2 Forward and Backward Stepwise Selection
+
+```{r}
+regfit.fwd <- regsubsets(Salary ~., data = Hitters, nvmax = 19, method = "forward")
+summary(regfit.fwd)
+regfit.bwd <- regsubsets(Salary ~., data = Hitters, nvmax = 19, method = "backward")
+summary(regfit.bwd)
+coef(regfit.full, 7)
+coef(regfit.fwd, 7)
+coef(regfit.bwd, 7)
+```
+
+## 6.5.3 Choosing Among Models Using the Validation Set Approach and Cross-Validation
+
+```{r}
+set.seed(1)
+train <- sample(c(TRUE, FALSE), nrow(Hitters), replace = TRUE)
+test = !train
+regfit.best <- regsubsets(Salary ~., data = Hitters[train, ], nvmax = 19)
+test.mat <- model.matrix(Salary ~., data = Hitters[test, ])
+val.errors <- rep(NA, 19)
+for (i in 1:19) {
+  coefi <- coef(regfit.best, i)
+  pred <- test.mat[, names(coefi)] %*% coefi
+  val.errors[i] <- mean((Hitters$Salary[test] - pred) ^ 2)
+}
+val.errors
+which.min(val.errors)
+coef(regfit.best, 10)
+
+predict.regsubset <- function(object, newdata, id, ...) {
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object, id = id)
+  xvars <- names(coefi)
+  mat[xvars] %*% coefi
+}
+
+for (i in 1:19) {
+  pred <- predict.regsubset(regfit.best, Hitters[train, ], id = i)
+}
+```
+
