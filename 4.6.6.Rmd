@@ -355,8 +355,9 @@ predict.regsubset <- function(object, newdata, id, ...) {
   mat[xvars] %*% coefi
 }
 
-for (i in 1:19) {
-  pred <- predict.regsubset(regfit.best, Hitters[train, ], id = i)
-}
+# as.formula(regfit.best$call[[2]])
+# for (i in 1:19) {
+#   pred <- predict.regsubset(regfit.best, Hitters[train, ], id = i)
+# }
 ```
 
